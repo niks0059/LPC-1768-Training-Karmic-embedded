@@ -55,7 +55,7 @@ PLL0FEED = 0x55
 
 ------------------------------------------------------
 30 apr 2019
-3. PLL0 & clock setting for 98MHz cclk.
+1. PLL0 & clock setting for 98MHz cclk.
 
 ext osc: 12 MHz
 fcco = 294 MHz
@@ -71,19 +71,40 @@ PLL0CON = 0x0000 0003
 PLL0FEED = 0xAA
 PLL0FEED = 0x55
 
+2.Code to turn ON and turn OFF onboard led on lpc1768h.
+--->
 
+#include "lpc17xx.h"
+#include "type.h"
+void delay(void);
+int main (void)
+{                                              
+  uint32_t i, j;
 
+  /* SystemClockUpdate() updates the SystemFrequency variable */
+  SystemClockUpdate();
 
+  //LPC_GPIO2->FIODIR = 0x000000FF;                   /* P2.xx defined as Outputs */
+  //LPC_GPIO2->FIOCLR = 0x000000FF;                   /* turn off all the LEDs */
+                LPC_PINCON->PINSEL3 = LPC_PINCON->PINSEL3 & ~(3<<26);
+                LPC_GPIO1->FIODIR =LPC_GPIO1->FIODIR | 1<<29;
+                while(1)
+                {
+                     LPC_GPIO1->FIOSET =LPC_GPIO1->FIOSET  | 1<<29;
+                     delay();
+                     LPC_GPIO1->FIOCLR =LPC_GPIO1->FIOCLR | 1<< 29;
+                     delay();
+                }
+}
+void delay(void)
+{
+   int i,j;                             
+   for(i = 0; i < 800; i++)
+   {
+      for(j = 0; j <1000 ; j++);
+   }
+}
 
-
-
-
-
-
-
-
-
-- Code to turn ON and turn OFF onboard led on lpc1768h.
 - Code to turn ON led with a switch onboard.
 
 PORT DRIVER 
