@@ -1,0 +1,200 @@
+//Program for adc through lpc1768 
+//Connect potentiometer pins one to Vcc, other to GND, and control pin of potentiometer to analog channel you select. 
+
+#include "system_lpc17xx.h"
+#include "lpc17xx.h"
+#include "type.h"
+//#include "adc.h"
+
+#define PIN_OFFSET 0x14
+#define PINSELCT0ADDR 0x4002C000
+#define PINMODE0ADDR  0x4002C040
+enum state {LOW=0,HIGH};
+enum pin_dir{OFF=0,ON};
+void SerialWrite(uint8_t);
+//enum state PinRead{ uint32_t, uint32_t };
+enum function_selection
+{
+                gpio = 0,
+                first_alternate = 1,
+                second_alternate = 2,
+                third_alternate = 3,
+                
+};
+enum pinmode
+{
+                pull_up = 0,
+                repeater =1,
+                no_pull_no_down =2,
+                on_chip_pull_up =3,
+};
+void delay(void);
+void PinSelFunc(uint8_t , uint8_t ,enum function_selection );
+void PinModeSel(uint8_t , uint8_t, enum pinmode);
+void PinWrite(uint8_t , uint8_t ,enum state );
+void PinDir(uint8_t ,uint8_t ,enum state);
+uint32_t PinRead(uint32_t, uint32_t);
+uint32_t res;
+int main (void)
+{    
+		 
+
+		SystemClockUpdate();
+		//SystemInit();
+
+		
+		//LPC_ADC->CR = (LPC_ADC->CR & ~(1<<21));		//ensuringg the pdn bit is cleared 
+		//LPC_SC->PCONP &= ~(1<<12);								//clearing the adc bit->12th.
+	
+		LPC_SC->PCONP |= 1<<12;	
+		LPC_ADC->CR= 0x00000200;								//selecting the CLKDIV value.	//seting the adc bit->12th.
+		LPC_ADC->CR |= (1<<21); 		//powering on adc by seting the pdn bit->21st.
+		
+		
+
+		//LPC_SC->PCLKSEL0 |= 0x3<<24;       		//setting pclk as cclk.
+		
+
+		PinSelFunc(0,24,first_alternate);
+	  PinModeSel(0,24,2);
+
+		LPC_ADC->CR&= ~(1<<16);      //burst mode is off
+		LPC_ADC->CR &= ~(7<<24);      //000 no start
+		LPC_ADC->CR |= 1<<1;       	//select channel 1 for adc
+
+		
+
+		while(1)	
+		{
+	//		res = LPC_ADC->GDR;
+//			LPC_ADC->CR &= ~(1<<24);		//start pulse		
+			LPC_ADC->CR |= 1<<24;		//start pulse												
+			while ((LPC_ADC->GDR) & (0x80000000)==0);    	//wait
+			res = LPC_ADC->GDR;
+			res = res & 0x0FFF0;
+			res = res >> 4;
+			
+			
+		}
+}
+
+void SerialWrite(uint8_t data)
+{
+			int32_t val,i;
+			for(i=0;i<8;i++)
+			{
+																			val=data & 0x01;                                                                                                                                                                                               
+																			data=data>>1;                                                                                                                                                  
+											
+											if(val)
+											{
+																											PinWrite(1,21,HIGH);
+											}
+											else
+											{
+																											PinWrite(1,21,LOW);
+											}
+			
+											PinWrite(1,22,HIGH);                                                                                                     //srclk pulse
+											delay();
+											PinWrite(1,22,LOW);
+											delay();
+			}
+			PinWrite(1,23,HIGH);                                                                                                     //rclk pulse
+			delay();
+			PinWrite(1,23,LOW);
+			delay();
+}
+
+void delay(void)                                                                                                                                                                                                                                                                                                                               //for 1khz.
+{
+                uint32_t i;
+                PinWrite(1,29,HIGH);
+                i=8928;
+                while(i--);
+                PinWrite(1,29,LOW);
+                i=8928;
+                while(i--);
+}
+
+
+uint32_t  PinRead(uint32_t Port_number, uint32_t Pin_number)
+{
+                
+                                uint32_t *port_addr;
+                  uint32_t return_value;
+                
+                                port_addr =(uint32_t*)( LPC_GPIO_BASE + 0x14 + 0x20 * Port_number);
+                
+                                return_value= ((*port_addr )>> Pin_number) & 0x01;
+                return return_value;
+}
+void PinWrite(uint8_t Port_number, uint8_t Pin_number,enum state pin_state)
+{
+                uint32_t *port_addr;
+                                                                                                                                port_addr =(uint32_t*)((LPC_GPIO_BASE + PIN_OFFSET + 0x20 * Port_number));
+                if(pin_state !=0)
+                {                                
+                                
+                                *port_addr = (*port_addr) | 0x01<<Pin_number;
+                }
+                else
+                {                           
+                                *port_addr = (*port_addr )& ~(0x01<<Pin_number);
+                }
+}
+
+void PinDir(uint8_t Port_number,uint8_t Pin_number,enum state pin_dir1)
+{
+    
+                                 uint32_t *port_addr;
+
+     if(pin_dir1 !=0)
+     {
+                                
+          port_addr =(uint32_t*)( LPC_GPIO_BASE + 0x20 * Port_number);       
+         *(port_addr) = (*port_addr )| (0x01<<Pin_number);
+      }
+      else
+      {
+                                                                                port_addr =(uint32_t*) (LPC_GPIO_BASE + 0x20 * Port_number);
+          *port_addr = (*port_addr )& ~(0x01<<Pin_number);
+      }              
+}
+void PinSelFunc(uint8_t  Port_number, uint8_t Pin_number, enum function_selection function_number)
+{
+                uint32_t* PortAddr;
+                if(Pin_number<=15)
+                {
+                                PortAddr = (uint32_t*)( PINSELCT0ADDR + Port_number * 8);    
+                                *(PortAddr)= *(PortAddr) & ~(3<<Pin_number *2);
+                                *(PortAddr)= *(PortAddr) | (function_number<<Pin_number *2);
+                }
+                else
+                {
+                                Pin_number = Pin_number -16;
+                                
+                                PortAddr = (uint32_t*) (PINSELCT0ADDR + 0x4 + (Port_number * 8));
+                                *(PortAddr)= *(PortAddr) & ~(3<<Pin_number *2);
+                                *(PortAddr)= *(PortAddr) | (function_number<<Pin_number *2);
+                }
+}
+
+void PinModeSel(uint8_t  Port_number, uint8_t Pin_number, enum pinmode mode)
+{
+                uint32_t* PortAddr;
+                if(Pin_number<=15)
+                {
+                                PortAddr = (uint32_t*) (PINMODE0ADDR + Port_number * 8);  
+                                *(PortAddr)= *(PortAddr) & ~(3<<Pin_number *2);
+                                *(PortAddr)= *(PortAddr) | (mode<<Pin_number *2);
+                }
+                else
+                {
+                                Pin_number = Pin_number -16;
+                                
+                                PortAddr = (uint32_t*) (PINMODE0ADDR + 0x4 + (Port_number * 8));
+                                *(PortAddr)= *(PortAddr) & ~(3<<Pin_number *2);
+                                *(PortAddr)= *(PortAddr) | (mode<<Pin_number *2);
+                }
+}
