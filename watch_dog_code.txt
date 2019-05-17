@@ -1,0 +1,188 @@
+#include "system_lpc17xx.h"
+#include "lpc17xx.h"
+#include "type.h"
+//#include "adc.h"
+
+#define PIN_OFFSET 0x14
+#define PINSELCT0ADDR 0x4002C000
+#define PINMODE0ADDR  0x4002C040
+enum state {LOW=0,HIGH};
+enum pin_dir{OFF=0,ON};
+void SerialWrite(uint8_t);
+//enum state PinRead{ uint32_t, uint32_t };
+enum function_selection
+{
+                gpio = 0,
+                first_alternate = 1,
+                second_alternate = 2,
+                third_alternate = 3,
+                
+};
+enum pinmode
+{
+                pull_up = 0,
+                repeater =1,
+                no_pull_no_down =2,
+                on_chip_pull_up =3,
+};
+void WatchDogTimerinit(void);
+void delay(void);
+void PinSelFunc(uint8_t , uint8_t ,enum function_selection );
+void PinModeSel(uint8_t , uint8_t, enum pinmode);
+void PinWrite(uint8_t , uint8_t ,enum state );
+void PinDir(uint8_t ,uint8_t ,enum state);
+uint32_t PinRead(uint32_t, uint32_t);
+uint32_t res;
+
+uint32_t i=10;				//change the value of i in debugger
+int main (void)
+{    
+			SystemClockUpdate();     		//Systemclock 
+			
+			PinSelFunc(1,29,0);					//selecting the pin for led as output.
+			PinDir(1,29,1);							// giving output ass direction to pin p1.29
+			
+			WatchDogTimerinit();				//initializationn of watchdog timer.
+			
+			while(1)
+			{		
+				FIOSET = 0x20000000;			//setting the pin p1.29 HIGH.
+				delay();
+				FIOCLR = 0x20000000;			//clearing the pin p1.29 LOW.
+				delay();	
+				while(i--)
+				{
+					delay();
+				}
+				LPC_WD->FEED = 0xAA;			// FEED sequence for watchdog timer.
+				LPC_WD->FEED = 0x55;
+			}
+}
+
+void SerialWrite(uint8_t data)
+{
+			int32_t val,i;
+			for(i=0;i<8;i++)
+			{
+																			val=data & 0x01;                                                                                                                                                                                               
+																			data=data>>1;                                                                                                                                                  
+											
+											if(val)
+											{
+																											PinWrite(1,21,HIGH);
+											}
+											else
+											{
+																											PinWrite(1,21,LOW);
+											}
+			
+											PinWrite(1,22,HIGH);                                                                                                     //srclk pulse
+											delay();
+											PinWrite(1,22,LOW);
+											delay();
+			}
+			PinWrite(1,23,HIGH);                                                                                                     //rclk pulse
+			delay();
+			PinWrite(1,23,LOW);
+			delay();
+}
+
+void delay(void)                                                                                                                                                                                                                                                                                                                               //for 1khz.
+{
+                uint32_t j;
+               // PinWrite(1,29,HIGH);
+                j=8928;
+                //while(i--);
+                //PinWrite(1,29,LOW);
+                //i=8928;
+                while(j--);
+}
+
+
+uint32_t  PinRead(uint32_t Port_number, uint32_t Pin_number)
+{
+                
+                                uint32_t *port_addr;
+                  uint32_t return_value;
+                
+                                port_addr =(uint32_t*)( LPC_GPIO_BASE + 0x14 + 0x20 * Port_number);
+                
+                                return_value= ((*port_addr )>> Pin_number) & 0x01;
+                return return_value;
+}
+void PinWrite(uint8_t Port_number, uint8_t Pin_number,enum state pin_state)
+{
+                uint32_t *port_addr;
+                                                                                                                                port_addr =(uint32_t*)((LPC_GPIO_BASE + PIN_OFFSET + 0x20 * Port_number));
+                if(pin_state !=0)
+                {                                
+                                
+                                *port_addr = (*port_addr) | 0x01<<Pin_number;
+                }
+                else
+                {                           
+                                *port_addr = (*port_addr )& ~(0x01<<Pin_number);
+                }
+}
+
+void PinDir(uint8_t Port_number,uint8_t Pin_number,enum state pin_dir1)
+{
+    
+     uint32_t *port_addr;
+
+     if(pin_dir1 !=0)
+     {
+                                
+          port_addr =(uint32_t*)( LPC_GPIO_BASE + 0x20 * Port_number);       
+         *(port_addr) = (*port_addr )| (0x01<<Pin_number);
+      }
+      else
+      {
+                                                                                port_addr =(uint32_t*) (LPC_GPIO_BASE + 0x20 * Port_number);
+          *port_addr = (*port_addr )& ~(0x01<<Pin_number);
+      }              
+}
+void PinSelFunc(uint8_t  Port_number, uint8_t Pin_number, enum function_selection function_number)
+{
+                uint32_t* PortAddr;
+                if(Pin_number<=15)
+                {
+                                PortAddr = (uint32_t*)( PINSELCT0ADDR + Port_number * 8);    
+                                *(PortAddr)= *(PortAddr) & ~(3<<Pin_number *2);
+                                *(PortAddr)= *(PortAddr) | (function_number<<Pin_number *2);
+                }
+                else
+                {
+                                Pin_number = Pin_number -16;
+                                
+                                PortAddr = (uint32_t*) (PINSELCT0ADDR + 0x4 + (Port_number * 8));
+                                *(PortAddr)= *(PortAddr) & ~(3<<Pin_number *2);
+                                *(PortAddr)= *(PortAddr) | (function_number<<Pin_number *2);
+                }
+}
+
+void PinModeSel(uint8_t  Port_number, uint8_t Pin_number, enum pinmode mode)
+{
+                uint32_t* PortAddr;
+                if(Pin_number<=15)
+                {
+                                PortAddr = (uint32_t*) (PINMODE0ADDR + Port_number * 8);  
+                                *(PortAddr)= *(PortAddr) & ~(3<<Pin_number *2);
+                                *(PortAddr)= *(PortAddr) | (mode<<Pin_number *2);
+                }
+                else
+                {
+                                Pin_number = Pin_number -16;
+                                
+                                PortAddr = (uint32_t*) (PINMODE0ADDR + 0x4 + (Port_number * 8));
+                                *(PortAddr)= *(PortAddr) & ~(3<<Pin_number *2);
+                                *(PortAddr)= *(PortAddr) | (mode<<Pin_number *2);
+                }
+}
+void WatchDogTimerinit(void)
+{
+
+	LPC_WDT->WDCLKSEL = 0x01;				//Selects the APB peripheral clock
+	LPC_WDT->MOD = 0x03; 						//set the WDEN Watchdog enable bit & Enabling the WT reset.
+	LPC_WDT->TC = 0x36EE8;					//loading the count value in WDTC.
+}
