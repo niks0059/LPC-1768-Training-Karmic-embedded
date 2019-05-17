@@ -1,0 +1,230 @@
+26 april 2019
+P1.27
+PINSEL3		01
+22:23 bit	 
+
+0100 0000 0000 0000 0000 0000 
+
+PINMODE3	NA(related to input)
+
+PINMODE_OD	NA
+
+PINSEL3	= PINSEL3 | (1<<22);
+
+PINSEL3	= PINSEL3 | 0x00040000;
+		
+------------------------------------------------------
+CLKOUTSEL = 0x00 00 01 01
+------------------------------------------------------
+29 apr 2019
+1. Formula to get memory address for PINSEL, PINMODE, PINMODE_OD where i is the register number
+Peripheral base address + Offset + formula.
+
+2. What registers to configure with what values for the below functionality.
+i. PWM1
+PINSEL4 = PINSEL4 |  0x01;0x02
+
+ii. ADC0
+iii. P0->22 as input
+//Select the pin functionality as gpio
+PINSEL1 = PINSEL1   & ~(0x3<<12)
+PINSEL1 = PINSEL1   & 0xFFFF CFFF
+//pin direction
+FIO0DIR = FIO0DIR & ~(1<<22);
+//PINMODE - to enable pull up/pull down
+
+iv. P0->15 as output
+FIO0DIR |= (1<<15);
+
+v. SPI0 channel 0
+
+3. PLL0 & clock setting for 100MHz cclk 
+ext osc: 12 MHz
+fcco = 300 MHz
+n=2
+m=25
+CLKSRCSEL = 0x0000 0000;
+PLL0CFG = 0x0001 0018
+PLL0CON = 0x0000 0001
+PLL0FEED = 0xAA
+PLL0FEED = 0x55
+while (!(PLL0STAT & 1<<26));
+PLL0CON = 0x0000 0003
+PLL0FEED = 0xAA
+PLL0FEED = 0x55
+
+------------------------------------------------------
+30 apr 2019
+3. PLL0 & clock setting for 98MHz cclk.
+
+- Code to turn ON and turn OFF onboard led on lpc1768h.
+- Code to turn ON led with a switch onboard.
+
+PORT DRIVER 
+- Function to read a value from a port_pin and return its state
+ex: state PinRead(uint_8 Port_number, uint_8 Pin_number)
+
+- Function to write a value onto a port_pin.
+ex: void PinWrite(uint_8 Port_number, uint_8 Pin_number, state pin_state)
+
+- Function to set pin mode
+ex: void PinDir(uint_8 Port_number, uint_8 Pin_number, ePinDir pin_dir)
+
+enum ePinDir 
+{
+INPUT =0,
+OUTPUT
+};
+
+- Function to set functionality
+ex: void PinSelFunc(uint_8 Port_number, uint_8 Pin_number, ePinFun pin_func)
+
+- Function to set pin mode
+ex: void PinMode(uint_8 Port_number, uint_8 Pin_number, mode pin_mode)
+-------------------------------------------------------
+6 May 2019
+1. Review 
+- Code to turn ON and turn OFF onboard led on lpc1768h.
+- Code to turn ON led with a switch onboard.
+- Port driver functions.
+
+2. Cocox plugin installation and verification of debugger.
+
+3. Generate a square wave of 1KHz.
+-------------------------------------------------------
+7 May 2019
+
+PORT DRIVER functions
+- Function to read a value from a port_pin and return its state
+ex: state PinRead(uint_8 Port_number, uint_8 Pin_number)
+
+- Function to write a value onto a port_pin.
+ex: void PinWrite(uint_8 Port_number, uint_8 Pin_number, state pin_state)
+
+- Function to set pin mode
+ex: void PinDir(uint_8 Port_number, uint_8 Pin_number, ePinDir pin_dir)
+
+- Function to set functionality
+ex: void PinSelFunc(uint_8 Port_number, uint_8 Pin_number, ePinFun pin_func)
+
+- Function to set pin mode
+ex: void PinMode(uint_8 Port_number, uint_8 Pin_number, mode pin_mode)
+
+---------------------------------
+8 May 2019
+
+- Generate a square wave of 1KHz
+PinSelFunc
+PinDir
+PinWrite
+
+1. Function to interface with HC595 serial to parallel IC.
+
+void serial_write(uint8_t data) 
+{
+count=8;i=100000;
+while(count) 
+{
+  	clock_high
+	P0.pin1 = data&0x01;
+	delay();
+	clock_low
+	delay();
+	count--;
+}
+pull_latch_high;
+delay();
+Pull_latch_low;
+}
+ 
+----------------------------------
+10 May 2019
+
+- void serial_write(uint8_t data) 
+{
+count=8;i=100000;
+while(count) 
+{
+  	clock_high --> initilaize the SPI clock for desired baudrate 
+	P0.pin1 = data&0x01;--> put entire data onto SPI buffer
+	delay();	------> start the transmission
+	clock_low
+	delay();
+	count--;
+}
+pull_latch_high;
+delay();
+Pull_latch_low;
+}
+
+- How do you interface a sensor with a microcontroller?
+
+12 --->3.3v
+8.7 : 3.3
+
+-----------
+ADC settings
+- PCONP register
+- PDN bit
+- Configure clock
+- PINSEL
+- PINMODE
+op - Interrupt
+op - DMA
+
+----
+- Connect potentiometer and read the voltage using ADC
+- Connect one sensor(temperature/humidity/battery) and read using ADC
+- Combine above 2 and read the same using ADC.Use burst conversion mode. 
+ADC0.0, ADC0.5
+
+Connect a array of LEDs to show voltage indication
+--------------------------------------------------
+15 May 2019
+
+- What is an interrupt?
+- what is a exception?
+- Interrupt latency
+- External vs internal interrupt
+- Interrupts with CPU wakeup capability
+- Vectored interrupts
+- Nested vectored interrupts
+
+
+--------------------------------------------------
+16 May 2019
+Q- Why do we've FIOSET adn FIOCLR registers when FIOPIN was enough?
+
+WDT
+1. Choose the timing for watchdog - 50ms
+2. Configure
+	- WDCLKSEL - 0x01  -->Pclk = 18 MHz
+	- WDMOD - Enable WDT, Enable WT reset
+	- WDTC - load the count value
+	- Feed sequence
+
+
+Watch dog time min =  (1/18Mhz) * 256 * 4 = 56.88 us 
+Watch dog time max = (1/18Mhz)* 2^32 * 4 = 954 s
+
+WDTC = 50ms/(1/18M s) = 50*18*10^3 = 900000 = 0xDBBA0
+
+3. How to verify
+int i=10;
+int main()
+{
+	watch_dog_init();
+	while(1)
+	{		
+		stmt();//change the value of i in debugger
+		stmt();	
+		while(i--)
+		{
+			delay();
+		}
+		watch_dog_feed();
+	}
+}
+---------------------------
+
+
