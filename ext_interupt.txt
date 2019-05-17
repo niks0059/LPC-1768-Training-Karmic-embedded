@@ -1,0 +1,51 @@
+//program for external interrupt with irq handler in lpc1768.
+
+#include "lpc17xx.h"
+//#include "type.h"
+#include "extint.h"
+volatile uint32_t eint0_counter;
+int main (void)
+{
+  /* SystemClockUpdate() updates the SystemFrequency variable */
+//  SystemClockUpdate();
+	    		
+  /* initialize GPIO pins as external interrupts */          
+  EINTInit();
+
+  /****** It's an endless loop waiting for external interrupt ******/
+  while( 1 );
+}
+
+
+void EINT0_IRQHandler (void) 
+{
+  LPC_SC->EXTINT = EINT0;		/* clear interrupt by setting any bit (means reading any bit onto this rsets the interrupt) */
+		
+  eint0_counter++;
+  if ( eint0_counter & 0x01 )	/* alternate the LED display */
+  {
+	LPC_GPIO1->FIOSET |= (1<<29);	/* turn off P1.29 */	
+	LPC_GPIO1->FIOCLR |= (1<<29);	/* turn on P1.29 */
+  }
+  else
+  {
+	LPC_GPIO1->FIOSET |= (1<<29);	/* turn on P1.29 */	
+	LPC_GPIO1->FIOSET |= (1<<29);	/* turn off P1.29 */
+  }
+
+}
+
+uint32_t EINTInit( void )
+{
+  LPC_PINCON->PINSEL4 = 0x00100000;	/* set P2.10 as EINT0 and p2.11   |=1<<11
+									P2.0~7 GPIO output */
+  LPC_GPIO2->FIODIR |=1<<29;	/* port 1, bit 29*/       
+  LPC_GPIO2->FIOCLR |=1<<29;	/* turn off LED */
+
+  LPC_GPIOINT->IO2IntEnF = 0x200;	/* Port2.10 is falling edge. */
+  LPC_SC->EXTMODE = EINT0_EDGE;		/* INT0 edge trigger */
+  LPC_SC->EXTPOLAR = 0;				/* INT0 is falling edge by default */
+
+  NVIC_EnableIRQ(EINT0_IRQn);
+  return( 1 );
+}
