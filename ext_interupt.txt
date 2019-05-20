@@ -49,3 +49,40 @@ uint32_t EINTInit( void )
   NVIC_EnableIRQ(EINT0_IRQn);
   return( 1 );
 }
+
+/*---------------------------------program for interrupt using pins other than p2.10,11,12,13.---------------------------------*/
+
+uint32_t EINTInit( void )
+{
+  LPC_PINCON->PINSEL4 = 0x00000000;	/* set P2.10 as EINT0 and p2.11   |=1<<11
+									P2.0~7 GPIO output */
+  LPC_GPIO2->FIODIR |=1<<6;	/* port 1, bit 29*/       
+  LPC_GPIO2->FIOCLR |=1<<6;	/* turn off LED */
+
+  LPC_GPIOINT->IO2IntEnF |= (1<<6) ;	/* Port2.10 is falling edge. */
+  LPC_SC->EXTMODE = EINT0_EDGE;		/* INT0 edge trigger */
+  LPC_SC->EXTPOLAR = 0;			/* INT0 is falling edge by default */
+
+  NVIC_EnableIRQ(EINT3_IRQn);
+  return( 1 );
+}
+
+
+void EINT3_IRQHandler (void) 
+{
+  LPC_SC->EXTINT = EINT3;		/* clear interrupt by setting any bit (means reading any bit onto this rsets the interrupt) */
+		
+  eint0_counter++;
+  if ( eint0_counter & 0x01 )	/* alternate the LED display */
+  {
+	LPC_GPIO1->FIOSET |= (1<<29);	/* turn off P1.29 */	
+	LPC_GPIO1->FIOCLR |= (1<<29);	/* turn on P1.29 */
+  }
+  else
+  {
+	LPC_GPIO1->FIOSET |= (1<<29);	/* turn on P1.29 */	
+	LPC_GPIO1->FIOSET |= (1<<29);	/* turn off P1.29 */
+  }
+
+}
+/*------------------------------------------------------------------------------------------------------------------------------------*/
