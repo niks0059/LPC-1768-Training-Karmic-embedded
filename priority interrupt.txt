@@ -1,0 +1,71 @@
+//demo program for interrupt priority working.
+#include "lpc17xx.h"
+//#include "type.h"
+#include "extint.h"
+#include "core_cm3.h"
+volatile uint32_t count;
+volatile uint32_t flag=0;
+void delay(void);
+void EINT3_IRQHandler (void) ;
+void EINT0_IRQHandler (void) ;
+uint32_t EINTInit(void) ;
+
+
+int main(void)			//main program starts from here.
+{
+           EINTInit();		//initialize the interrupts.
+           while(1); 
+}
+
+void EINT3_IRQHandler (void)      //what action will occur on interrupt                                        
+{
+       	//NVIC->ICER[0] |=(1<<21);     		//clearing the intrpt.                           
+       	LPC_GPIOINT->IO0IntClr |=(1<<20);     	//clear the gpio intrupt.                  
+	//LPC_SC->EXTINT = EINT3;      		// clear/reset interrupt ent3                          
+       
+	LPC_GPIO1->FIODIR |=1<<29;  		//setting dir as output.
+	LPC_GPIO1->FIOSET |= (1<<29);    	// turn off P1.29                         
+   	delay();
+        LPC_GPIO1->FIOCLR |= (1<<29);  		// turn on P1.29                          
+        delay();
+}
+void EINT0_IRQHandler (void)                    //what action will occur on interrupt
+{
+
+        LPC_SC->EXTINT = EINT0;      		//reset                       
+	LPC_GPIO1->FIODIR |=1<<27;   		//setting dir as output.
+	LPC_GPIO1->FIOSET |= (1<<27);           //set p1.27
+        delay();
+        LPC_GPIO1->FIOCLR |= (1<<27);  		//clear p1.27
+        delay();
+
+}
+uint32_t EINTInit(void)          //initializing the interrupt
+
+{
+
+	LPC_PINCON->PINSEL4 |= (0x01<<20);      //selecting pin functioniality as ent0.
+	LPC_PINCON->PINMODE4|= (1<<21);   	//selecting pinmode for p2.10                                   
+	LPC_SC->EXTMODE = EINT0_EDGE;   	// INT0 edge trigger                                      
+	LPC_SC->EXTPOLAR = 0;           	// INT0 is falling edge by default                                      
+	NVIC_EnableIRQ(EINT0_IRQn);   		//enabling intrpt ent0.                              
+	
+	LPC_GPIOINT->IO0IntEnF |= (1<<20);      //Enable GPIO interrupts in IO0/2IntEnR. on pin p0.20
+	LPC_SC->EXTMODE = EINT0_EDGE;           // INT0 edge trigger                             
+	LPC_SC->EXTPOLAR = 0;                   // INT0 is falling edge by default                             
+	//NVIC->ISER[0] |= (1<<21);            	//Interrupts  enabled in Interrupt Set Enable 0 register.                               
+   	NVIC_EnableIRQ(EINT3_IRQn);             //enabling the interrupt ent3.                              
+
+	NVIC_SetPriority(EINT0_IRQn, 1);  //passing eint0 with priority                              
+	NVIC_SetPriority(EINT3_IRQn, 3);  //passing eint3 with priority                              
+
+
+}
+void delay(void)			//function for delay
+{
+        uint32_t j,i;
+        for(j=0;j < 800;j++)
+	{
+		for(i=0;i< 1000 ;i++);
+	}
+}
