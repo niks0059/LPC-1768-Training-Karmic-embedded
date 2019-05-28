@@ -1,0 +1,55 @@
+#include "LPC17xx.h"
+
+//LED
+#define LED     (1 << 29)
+#define LED_ON     LPC_GPIO1->FIOSET=LED
+#define LED_OFF    LPC_GPIO1->FIOCLR=LED
+#define LED_TOG    LPC_GPIO1->FIOPIN^=LED
+
+uint32_t pulse_width=0;
+uint32_t pulse_interval=0;
+uint32_t interrupt_count=0;
+uint32_t capture_value;
+
+void TIMER0_IRQHandler(void)
+{
+                uint32_t reg_val;
+                static uint32_t high_capture;
+                interrupt_count++;
+                reg_val = LPC_TIM0->IR;
+                capture_value = LPC_TIM0->CR0;
+                if(reg_val & (1<<4))            //CR0 interrupt
+                {
+                      if(LPC_GPIO1->FIOPIN & (1<<26))//high?
+                      {
+                              LED_ON;
+                              if((high_capture != 0) && (high_capture < capture_value))
+                              {
+                                     pulse_interval = ((capture_value - high_capture)/18);//pclk is 18mhz, hence pulse_interval = count/18Mhz = time in micro sec 
+                              }
+                              high_capture = capture_value;
+                       }
+                       else
+                       {
+                              LED_OFF;
+                       }
+                     LPC_TIM0->IR = (1<<4);        //reset interrupt
+                }
+}
+
+int main(void)
+{
+                LPC_GPIO1->FIODIR |= LED;        //LED output 
+                volatile static int i = 0;
+                //setup timer 0 capture
+                //Setup P1.26 as CAP0.0 
+                LPC_PINCON->PINSEL3 |= (3<<20);    //set capture 0.0
+                //Note: reset values of timer registers are 0, so setting them isn't necessary
+                LPC_TIM0->CCR =((1<<0)|(1<<1)|(1<<2));        //capture rising & falling with interrupt
+                LPC_TIM0->TCR = 1;                //start timer
+                NVIC_EnableIRQ(TIMER0_IRQn);
+                while(1)
+                {
+                                i++ ;
+                } 
+}
