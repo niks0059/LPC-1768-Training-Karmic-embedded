@@ -2,8 +2,9 @@
 
 #include "LPC17xx.h"
 #include "system_LPC17xx.h"
+
 #define Pulse_Interval 1000						//Pulse_Interval interval.
-#define Pulse_Width 10
+#define Pulse_Width 40
 
 int main(void)
 {
@@ -15,11 +16,14 @@ int main(void)
 		LPC_TIM0->PR = 0x11;								//set PR value 17.
 	
 		LPC_PINCON->PINSEL3 |= (3<<24);			//selecting pin p1.28 as mat0.0.
-		LPC_GPIO1->FIODIR |= (1<<28);			//setting direction as output.
+		//LPC_GPIO1->FIODIR |= (1<<28);			//setting direction as output.
 		
-		LPC_TIM0->TCR |= (1<<0);						//enabling the timer.
 		NVIC_EnableIRQ(TIMER0_IRQn);				//enabling timer0 intrupt.
-
+	
+	  LPC_TIM0->MR0 = (Pulse_Width*Pulse_Interval)/100;
+	  LPC_TIM0->TCR |= (1<<0);						//enabling the timer.
+		
+		while(1);
 	
 }
 void TIMER0_IRQHandler(void)
