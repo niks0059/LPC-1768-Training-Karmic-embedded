@@ -47,7 +47,7 @@ void PinSelFunc(uint8_t , uint8_t ,enum function_selection );
 void PinModeSel(uint8_t , uint8_t, enum pinmode);
 void PinWrite(uint8_t , uint8_t ,enum state );
 void PinDir(uint8_t ,uint8_t ,enum state);
-uint32_t PinRead(uint32_t, uint32_t);
+uint32_t PinRead(uint32_t, uint32_t);	             //uint32 not req use enum instead.											
 int main (void)
 {    
                  
