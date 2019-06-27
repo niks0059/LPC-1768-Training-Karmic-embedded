@@ -38,3 +38,6 @@
 				LPC_TIM0->MR0 = ((Pwidth * Pint)/100);
 			}
 	}
+	
+	
+//if duty is more than 90 or 95 percent then practise in company is that they immediately convert it to gpio and make that pin high n stop the clock.
